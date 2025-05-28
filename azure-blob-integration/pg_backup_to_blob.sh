@@ -44,18 +44,6 @@ fi
   exit 1
 }
 
-# Verify SAS token format
-if ! [[ "$SAS_TOKEN" =~ ^sv=.*sig= ]]; then
-  echo "Invalid SAS token format. It should start with 'sv=' and contain 'sig='"
-  exit 1
-fi
-
-# Check AzCopy
-if ! command -v azcopy &> /dev/null; then
-  echo "Installing AzCopy..."
-  curl -sL https://aka.ms/downloadazcopy-v10-linux | tar xz --strip-components=1 -C /usr/local/bin/ --wildcards '*/azcopy'
-fi
-
 # Set password if provided
 [ -n "$PASSWORD" ] && export PGPASSWORD="$PASSWORD"
 
@@ -79,11 +67,15 @@ stream_backup() {
     --recursive=false \
     --log-level=ERROR \
     --put-md5 &
+  local azcopy_pid=$!
   
   # Stream PostgreSQL backup through gzip to AzCopy
   pg_dump -U "$USERNAME" -h "$HOSTNAME" "$db" | gzip > "$PIPE"
+
+
+  wait $azcopy_pid
+  local status=$?
   
-  wait # for AzCopy to finish
   [ $? -eq 0 ] && echo "Backup successful: $blob_path" || {
     echo "Backup failed for $db"
     return 1
