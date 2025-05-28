@@ -1,12 +1,13 @@
 #!/bin/bash
 
-# PostgreSQL to Azure Blob Storage Backup Script with Streaming
-# Usage: ./pg_backup_to_azure.sh -u username -h hostname [-d database_name | -a] -c container_name -s "SAS_URL" [-p password]
+# PostgreSQL to Azure Blob Storage Backup Script with Robust SAS Handling
+# Usage: ./pg_backup_to_azure.sh -u username -h hostname [-d database_name | -a] -c container_name -s "SAS_TOKEN"
 
 # Initialize variables
 BACKUP_ALL=false
 PASSWORD=""
-SAS_URL=""
+SAS_TOKEN=""
+ACCOUNT_NAME=""
 
 # Parse arguments
 while getopts "u:h:d:c:p:a:s:" opt; do
@@ -17,17 +18,43 @@ while getopts "u:h:d:c:p:a:s:" opt; do
     c) CONTAINER="$OPTARG" ;;
     p) PASSWORD="$OPTARG" ;;
     a) BACKUP_ALL=true ;;
-    s) SAS_URL="$OPTARG" ;;
-    *) echo "Usage: $0 -u username -h hostname [-d database_name | -a] -c container_name -s \"SAS_URL\" [-p password]"
+    s) SAS_TOKEN="$OPTARG" ;;
+    *) echo "Usage: $0 -u username -h hostname [-d database_name | -a] -c container_name -s \"SAS_TOKEN\""
        exit 1 ;;
   esac
 done
 
 # Validate arguments
-[ -z "$USERNAME" ] || [ -z "$HOSTNAME" ] || [ -z "$CONTAINER" ] || [ -z "$SAS_URL" ] && {
+[ -z "$USERNAME" ] || [ -z "$HOSTNAME" ] || [ -z "$CONTAINER" ] || [ -z "$SAS_TOKEN" ] && {
   echo "Missing required arguments"
   exit 1
 }
+
+# Extract account name from SAS token if in URL format
+if [[ "$SAS_TOKEN" == *"blob.core.windows.net"* ]]; then
+  ACCOUNT_NAME=$(echo "$SAS_TOKEN" | awk -F'/' '{print $3}' | awk -F'.' '{print $1}')
+  SAS_TOKEN=$(echo "$SAS_TOKEN" | awk -F'?' '{print $2}')
+fi
+
+[ -z "$ACCOUNT_NAME" ] && {
+  echo "Could not extract storage account name from SAS token"
+  echo "Please provide either:"
+  echo "1. Full SAS URL (https://account.blob.core.windows.net?sv=...)"
+  echo "2. Account name via -a parameter and SAS token via -s"
+  exit 1
+}
+
+# Verify SAS token format
+if ! [[ "$SAS_TOKEN" =~ ^sv=.*sig= ]]; then
+  echo "Invalid SAS token format. It should start with 'sv=' and contain 'sig='"
+  exit 1
+fi
+
+# Check AzCopy
+if ! command -v azcopy &> /dev/null; then
+  echo "Installing AzCopy..."
+  curl -sL https://aka.ms/downloadazcopy-v10-linux | tar xz --strip-components=1 -C /usr/local/bin/ --wildcards '*/azcopy'
+fi
 
 # Set password if provided
 [ -n "$PASSWORD" ] && export PGPASSWORD="$PASSWORD"
@@ -42,13 +69,16 @@ stream_backup() {
   local db=$1
   local timestamp=$(date +%Y%m%d_%H%M%S)
   local blob_path="${db}/backup_${timestamp}.sql.gz"
+  local dest_url="https://${ACCOUNT_NAME}.blob.core.windows.net/${CONTAINER}/${blob_path}?${SAS_TOKEN}"
   
   echo "Streaming backup of $db to Azure..."
+  echo "Destination URL: ${dest_url%%sig=*}sig=***REDACTED***"
   
   # Start AzCopy in the background
-  azcopy copy "$PIPE" "${SAS_URL%/}/$CONTAINER/$blob_path" \
+  azcopy copy "$PIPE" "$dest_url" \
     --recursive=false \
-    --log-level=ERROR &
+    --log-level=ERROR \
+    --put-md5 &
   
   # Stream PostgreSQL backup through gzip to AzCopy
   pg_dump -U "$USERNAME" -h "$HOSTNAME" "$db" | gzip > "$PIPE"
