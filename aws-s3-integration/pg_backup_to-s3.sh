@@ -46,7 +46,6 @@ fi
 
 # Create timestamp
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-
 # Function to backup a single database to its folder
 backup_single_db() {
   local db=$1
@@ -68,8 +67,8 @@ backup_single_db() {
 if [ "$BACKUP_ALL" = true ]; then
   echo "Backing up ALL databases to S3..."
   
-  # Get list of databases (excluding system databases)
-  DATABASES=$(psql -U "$USERNAME" -h "$HOSTNAME" -t -c "SELECT datname FROM pg_database WHERE datname NOT LIKE 'template%' AND datname != 'postgres';")
+  # Get list of databases (connect to 'postgres' database explicitly)
+  DATABASES=$(psql -U "$USERNAME" -h "$HOSTNAME" -d postgres -t -c "SELECT datname FROM pg_database WHERE datname NOT LIKE 'template%' AND datname != 'postgres';")
   
   for DB in $DATABASES; do
     backup_single_db "$DB"
