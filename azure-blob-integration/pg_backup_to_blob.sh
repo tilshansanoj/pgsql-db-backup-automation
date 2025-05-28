@@ -29,12 +29,6 @@ done
   exit 1
 }
 
-# Check AzCopy
-if ! command -v azcopy &> /dev/null; then
-  echo "Installing AzCopy..."
-  curl -sL https://aka.ms/downloadazcopy-v10-linux | tar xz --strip-components=1 -C /usr/local/bin/ --wildcards '*/azcopy'
-fi
-
 # Set password if provided
 [ -n "$PASSWORD" ] && export PGPASSWORD="$PASSWORD"
 
