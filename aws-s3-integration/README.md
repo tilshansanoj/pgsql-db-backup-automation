@@ -1,3 +1,10 @@
+## Requirements
+
+- AWS CLI configured with proper S3 permissions
+- PostgreSQL client tools (`pg_dump`, `pg_dumpall`) installed
+- Network access between your server and PostgreSQL/S3
+
+
 ## How to Use This Script
 
 1. **Save the script** as `pg_backup_to_s3.sh`.
@@ -32,8 +39,3 @@
 - Success/failure feedback
 - Proper cleanup of password environment variable
 
-## Requirements
-
-- AWS CLI configured with proper S3 permissions
-- PostgreSQL client tools (`pg_dump`, `pg_dumpall`) installed
-- Network access between your server and PostgreSQL/S3

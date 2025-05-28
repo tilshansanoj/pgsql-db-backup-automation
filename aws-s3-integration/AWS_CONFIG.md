@@ -1,4 +1,4 @@
-1. **Create an IAM Policy**
+## **Create an IAM Policy**
 
 ```json
 {
@@ -24,7 +24,7 @@
 - Create an IAM role with this policy.
 - Attach the role to your EC2 instance.
 
-2. **S3 Bucket Permissions**
+## **S3 Bucket Permissions**
 
 Add this to your S3 bucket policy (replace placeholders):
 
@@ -52,7 +52,7 @@ Add this to your S3 bucket policy (replace placeholders):
 }
 ```
 
-3. **Testing Permissions**
+## **Testing Permissions**
 
 Test your setup with:
 
@@ -62,4 +62,26 @@ aws s3 ls s3://your-backup-bucket/
 
 # Test PostgreSQL access
 psql -U username -h hostname -c "\l"
+```
+
+## **Add a S3 Bucket Lifecycle Rule**
+
+To automatically delete backups older than 30 days, you can set up a lifecycle rule in your S3 bucket. This can be done using the AWS CLI as follows:
+```bash
+aws s3api put-bucket-lifecycle-configuration \
+  --bucket wireapps-internal-postgres-db-backups \
+  --lifecycle-configuration '{
+    "Rules": [
+      {
+        "ID": "Delete30DayOldBackups",
+        "Status": "Enabled",
+        "Filter": {
+          "Prefix": "backups/"
+        },
+        "Expiration": {
+          "Days": 30
+        }
+      }
+    ]
+  }
 ```
