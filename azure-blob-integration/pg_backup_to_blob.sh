@@ -62,6 +62,7 @@ stream_backup() {
   echo "Streaming backup of $db to Azure..."
   echo "Destination URL: ${dest_url%%sig=*}sig=***REDACTED***"
   
+  pg_dump -U "$USERNAME" -h "$HOSTNAME" "$db" | gzip > "$PIPE"
   # Start AzCopy in the background
   azcopy copy "$PIPE" "$dest_url" \
     --recursive=false \
@@ -69,9 +70,6 @@ stream_backup() {
     --put-md5 &
   local azcopy_pid=$!
   
-  # Stream PostgreSQL backup through gzip to AzCopy
-  pg_dump -U "$USERNAME" -h "$HOSTNAME" "$db" | gzip > "$PIPE"
-
   exec 3>&-
   
   wait $azcopy_pid
