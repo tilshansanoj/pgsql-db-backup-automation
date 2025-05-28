@@ -68,7 +68,7 @@ if [ "$BACKUP_ALL" = true ]; then
   echo "Backing up ALL databases to S3..."
   
   # Get list of databases (connect to 'postgres' database explicitly)
-  DATABASES=$(psql -U "$USERNAME" -h "$HOSTNAME" -d postgres -t -c "SELECT datname FROM pg_database WHERE datname NOT LIKE 'template%' AND datname != 'postgres';")
+  DATABASES=$(psql -U "$USERNAME" -h "$HOSTNAME" -d postgres -t -c "SELECT datname FROM pg_database WHERE datname NOT LIKE 'template%' AND datname != 'postgres' AND datname != 'rdsadmin';")
   
   for DB in $DATABASES; do
     backup_single_db "$DB"
