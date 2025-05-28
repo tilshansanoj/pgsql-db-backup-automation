@@ -66,9 +66,7 @@ stream_backup() {
   azcopy copy "$PIPE" "$dest_url" \
     --recursive=false \
     --log-level=ERROR \
-    --put-md5 \
-    --overwrite=true \
-    --from-to=pipe-blob &
+    --put-md5 &
   local azcopy_pid=$!
   
   # Stream PostgreSQL backup through gzip to AzCopy
