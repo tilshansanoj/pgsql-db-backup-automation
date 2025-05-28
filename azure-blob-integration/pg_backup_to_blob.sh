@@ -67,7 +67,6 @@ stream_backup() {
     --recursive=false \
     --log-level=ERROR \
     --put-md5 \
-    --output-type=quiet \
     --overwrite=true \
     --from-to=pipe-blob &
   local azcopy_pid=$!
